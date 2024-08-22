@@ -116,11 +116,32 @@ fn main() -> ! {
 
     loop {
         let mut chuck: [u8; 6] = [0; 6];
-        if let Err(e) = i2c.read(0x52u8, &mut chuck) {
+        if i2c.write(0x52u8, &[0]).is_err() {
+            error!("cannot write the address");
+        }
+        if let Err(_e) = i2c.read(0x52u8, &mut chuck) {
             error!("cannot get the readings");
         } else {
             let chuck_str = format_array_to_string(chuck);
             info!("{}", chuck_str);
+            let z_button = chuck[5] & 1 != 0;
+            let c_button = chuck[5] & 2 != 0;
+            let button_state = |b: bool| {
+                if b {
+                    "OFF"
+                } else {
+                    "ON"
+                }
+            };
+            info!(
+                "Z: {}  C: {}",
+                button_state(z_button),
+                button_state(c_button)
+            );
+            let accel_x = ((chuck[5] >> 2) & 0b11) | (chuck[2] << 2);
+            let accel_y = ((chuck[5] >> 4) & 0b11) | (chuck[3] << 2);
+            let accel_z = ((chuck[5] >> 6) & 0b11) | (chuck[4] << 2);
+            info!("X: {}, Y: {}, Z: {}", accel_x, accel_y, accel_z);
         }
         delay.delay_ms(10);
     }
