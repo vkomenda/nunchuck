@@ -1,13 +1,10 @@
-//! Blinks the LED on a Pico board
-//!
-//! This will blink an LED attached to GP25, which is the pin the Pico uses for the on-board LED.
 #![no_std]
 #![no_main]
 
 use bsp::entry;
 use defmt::*;
 use defmt_rtt as _;
-use embedded_hal::{digital::OutputPin, i2c::I2c};
+use embedded_hal::i2c::I2c;
 use panic_probe as _;
 
 // Provide an alias for our BSP so we can switch targets quickly.
@@ -38,16 +35,17 @@ fn byte_to_hex(byte: u8) -> (u8, u8) {
 
 fn format_array_to_string(arr: [u8; 6]) -> Result<&'static str, ()> {
     static mut BUFFER: [u8; 12] = [0; 12]; // 6 bytes * 2 chars per byte
-    let buffer = unsafe { &mut BUFFER };
 
     for (i, &byte) in arr.iter().enumerate() {
         let (high, low) = byte_to_hex(byte);
-        buffer[i * 2] = high;
-        buffer[i * 2 + 1] = low;
+        unsafe {
+            BUFFER[i * 2] = high;
+            BUFFER[i * 2 + 1] = low;
+        }
     }
 
     // Convert the buffer to a string slice (safe because it only contains valid ASCII)
-    let result_str = unsafe { core::str::from_utf8_unchecked(&buffer[..]) };
+    let result_str = unsafe { core::str::from_utf8_unchecked(&BUFFER[..]) };
 
     Ok(result_str)
 }
@@ -138,9 +136,9 @@ fn main() -> ! {
                 button_state(z_button),
                 button_state(c_button)
             );
-            let accel_x = ((chuck[5] >> 2) & 0b11) | (chuck[2] << 2);
-            let accel_y = ((chuck[5] >> 4) & 0b11) | (chuck[3] << 2);
-            let accel_z = ((chuck[5] >> 6) & 0b11) | (chuck[4] << 2);
+            let accel_x = ((chuck[5] >> 2) & 0b11) as u16 | ((chuck[2] as u16) << 2);
+            let accel_y = ((chuck[5] >> 4) & 0b11) as u16 | ((chuck[3] as u16) << 2);
+            let accel_z = ((chuck[5] >> 6) & 0b11) as u16 | ((chuck[4] as u16) << 2);
             info!("X: {}, Y: {}, Z: {}", accel_x, accel_y, accel_z);
         }
         delay.delay_ms(10);
